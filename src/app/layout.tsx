@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Navigation from "@/components/Navigation";
@@ -12,10 +12,14 @@ const inter = Inter({
   preload: true,
 });
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1.0,
+};
+
 export const metadata: Metadata = {
   title: "Better.com - A better way to own a home",
   description: "Better.com is a digital-first homeownership platform that provides a simple, transparent, and fast way to get a mortgage.",
-  viewport: "width=device-width, initial-scale=1.0",
 };
 
 export default function RootLayout({

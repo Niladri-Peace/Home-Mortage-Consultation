@@ -1,11 +1,27 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { HomeIcon, CalculatorIcon, CurrencyDollarIcon, BanknotesIcon, BuildingOfficeIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 
-export default function MortgageCalculator() {
+// Format currency helper function
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+};
+
+// Format percentage helper function
+const formatPercentage = (value: number) => {
+  return `${value}%`;
+};
+
+// Main calculator component
+function MortgageCalculatorContent() {
   const searchParams = useSearchParams();
   const [homePrice, setHomePrice] = useState(400000);
   const [downPayment, setDownPayment] = useState(20);
@@ -29,54 +45,46 @@ export default function MortgageCalculator() {
     }
   }, [searchParams]);
 
-  // Calculate monthly payment whenever inputs change
-  useEffect(() => {
-    const calculatePayment = () => {
-      // Convert annual rate to monthly and percentage to decimal
-      const monthlyRate = interestRate / 100 / 12;
-      const numberOfPayments = loanTerm * 12;
-      
-      // Calculate monthly mortgage payment using the formula: P * (r(1+r)^n) / ((1+r)^n - 1)
-      const principal = homePrice - downPaymentAmount;
-      const mortgagePayment = principal * (monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments)) / 
-                            (Math.pow(1 + monthlyRate, numberOfPayments) - 1);
-      
-      // Add other monthly costs
-      const totalMonthlyPayment = mortgagePayment + 
-                                (propertyTax / 12) + 
-                                (homeInsurance / 12) + 
-                                hoaFees;
-      
-      setMonthlyPayment(totalMonthlyPayment);
-      setLoanAmount(principal);
-    };
-
-    calculatePayment();
-  }, [homePrice, downPayment, downPaymentAmount, interestRate, loanTerm, propertyTax, homeInsurance, hoaFees]);
-
-  // Update down payment amount when home price or percentage changes
+  // Calculate down payment amount when home price or down payment percentage changes
   useEffect(() => {
     const newDownPaymentAmount = (homePrice * downPayment) / 100;
     setDownPaymentAmount(newDownPaymentAmount);
+    setLoanAmount(homePrice - newDownPaymentAmount);
   }, [homePrice, downPayment]);
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
+  // Calculate monthly payment when inputs change
+  const calculateMonthlyPayment = () => {
+    const monthlyInterestRate = interestRate / 100 / 12;
+    const numberOfPayments = loanTerm * 12;
+    const principal = loanAmount;
+    
+    if (monthlyInterestRate === 0) {
+      return principal / numberOfPayments + (propertyTax + homeInsurance + hoaFees) / 12;
+    }
+    
+    const mortgagePayment = principal * (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, numberOfPayments)) / 
+      (Math.pow(1 + monthlyInterestRate, numberOfPayments) - 1);
+    
+    return mortgagePayment + (propertyTax + homeInsurance + hoaFees) / 12;
   };
 
-  const formatPercentage = (value: number) => {
-    return `${value}%`;
-  };
+  // Update monthly payment when inputs change
+  useEffect(() => {
+    const payment = calculateMonthlyPayment();
+    setMonthlyPayment(payment);
+  }, [homePrice, downPayment, loanAmount, interestRate, loanTerm, propertyTax, homeInsurance, hoaFees]);
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Mortgage Calculator</h1>
+    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-4xl mx-auto">
+        <div className="text-center mb-10">
+          <h1 className="text-3xl font-bold text-gray-900 sm:text-4xl">
+            Mortgage Calculator
+          </h1>
+          <p className="mt-3 text-xl text-gray-500">
+            Estimate your monthly mortgage payments
+          </p>
+        </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Calculator Form */}
@@ -185,10 +193,10 @@ export default function MortgageCalculator() {
                   value={loanTerm}
                   onChange={(e) => setLoanTerm(Number(e.target.value))}
                 >
-                  <option value="10">10 years</option>
-                  <option value="15">15 years</option>
-                  <option value="20">20 years</option>
-                  <option value="30">30 years</option>
+                  <option value={10}>10 years</option>
+                  <option value={15}>15 years</option>
+                  <option value={20}>20 years</option>
+                  <option value={30}>30 years</option>
                 </select>
               </div>
 
@@ -331,5 +339,14 @@ export default function MortgageCalculator() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Main page component with Suspense boundary
+export default function MortgageCalculator() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading calculator...</div>}>
+      <MortgageCalculatorContent />
+    </Suspense>
   );
 }
